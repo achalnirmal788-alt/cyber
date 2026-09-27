@@ -26,6 +26,8 @@ jobs:
   build:
     name: Build & Test
     runs-on: ubuntu-latest
+    outputs:
+      pages_available: ${{ steps.pages.outcome == 'success' }}
 
     steps:
       - name: Checkout repository
@@ -74,11 +76,15 @@ jobs:
           retention-days: 14
 
       - name: Setup Pages
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        id: pages
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
+        continue-on-error: true
+        with:
+          enablement: true
 
       - name: Upload artifact for GitHub Pages
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        if: steps.pages.outcome == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ steps.locate.outputs.dir }}/dist
@@ -86,7 +92,7 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request'
+    if: needs.build.outputs.pages_available == 'true'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -95,5 +101,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-   
